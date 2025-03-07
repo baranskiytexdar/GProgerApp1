@@ -1,4 +1,11 @@
-package com.example.gprogerapp1
+package com.example.gprogerapp1 // Замените на ваш пакет
 
-class MyApp {
+import android.app.Application
+import com.jakewharton.threetenabp.AndroidThreeTen
+
+class MyApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        AndroidThreeTen.init(this)
+    }
 }
