@@ -4,10 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-//import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.*
-//import androidx.compose.foundation.layout.padding
-
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -23,16 +20,6 @@ import android.app.DatePickerDialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-//import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.gprogerapp1.ui.theme.GProgerApp1Theme
-import java.util.Calendar
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,31 +37,24 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Модель данных для результатов запроса
-data class SdelniyNaryadOperation(
-    val ssylka: String,
-    val zakazPokupatelya: String,
-    val nomenklatura: String,
-    val operaciya: String,
-    val kolichestvoPlan: Double,
-    val normaVremeni: Double,
-    val rascenka: Double
-)
-
 @Composable
 fun MainScreen(modifier: Modifier = Modifier, viewModel: OneCViewModel = viewModel()) {
-    // Получаем текущую дату
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    // Получаем дату из требований (2025-02-18)
+    var selectedDate by remember { mutableStateOf(LocalDate.of(2025, 2, 18)) }
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     val formattedDate = selectedDate.format(dateFormatter)
+
+    // Формат даты для API (yyyy-MM-dd)
+    val apiDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val apiFormattedDate = selectedDate.format(apiDateFormatter)
 
     // Состояния для отслеживания данных
     val operations by viewModel.operations.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // Исполнитель (в реальном приложении должен быть выбор пользователя)
-    var ispolnitel by remember { mutableStateOf("Текущий пользователь") }
+    // Исполнитель из требований
+    var ispolnitel by remember { mutableStateOf("Дудникова  Наталья Александровна") }
 
     // Контекст для диалога выбора даты
     val context = LocalContext.current
@@ -184,7 +164,8 @@ fun MainScreen(modifier: Modifier = Modifier, viewModel: OneCViewModel = viewMod
         Button(
             onClick = {
                 showResults = true
-                viewModel.fetchOperations(ispolnitel)
+                // Вызываем метод загрузки данных из ViewModel
+                viewModel.fetchOperations(apiFormattedDate, ispolnitel)
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -207,17 +188,54 @@ fun OperationItem(operation: SdelniyNaryadOperation) {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(text = "Номенклатура: ${operation.nomenklatura}", style = MaterialTheme.typography.titleMedium)
-            Text(text = "Операция: ${operation.operaciya}")
-            Text(text = "Заказ покупателя: ${operation.zakazPokupatelya}")
+            // Выделяем операцию крупным шрифтом
+            Text(
+                text = operation.operaciya,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Код операции и заказ покупателя более мелким шрифтом
+            Row {
+                Text(
+                    text = "Код: ${operation.ssylka}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                if (operation.zakazPokupatelya.isNotEmpty()) {
+                    Text(
+                        text = "Заказ: ${operation.zakazPokupatelya}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Показываем информацию о плане, норме и расценке в строку
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
-                Text(text = "План: ${operation.kolichestvoPlan}", modifier = Modifier.weight(1f))
-                Text(text = "Норма: ${operation.normaVremeni}", modifier = Modifier.weight(1f))
-                Text(text = "Расценка: ${operation.rascenka} ₽", modifier = Modifier.weight(1f))
+                Text(
+                    text = "План: ${operation.kolichestvoPlan}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Норма времени: ${operation.normaVremeni}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Расценка: ${operation.rascenka} ₽",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }

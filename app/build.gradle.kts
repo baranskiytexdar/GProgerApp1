@@ -84,5 +84,16 @@ dependencies {
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
     implementation("androidx.compose.compiler:compiler:1.5.10")
-    //implementation("androidx.compose.compiler:compiler:1.5.1")
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+
+    // Конвертер для XML (если ваш 1С сервис использует XML формат)
+    implementation("com.squareup.retrofit2:converter-simplexml:2.9.0")
+    // или используйте JSON-конвертер, если 1С возвращает JSON
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // OkHttp логгер для отладки запросов
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // Добавьте корутины, если их еще нет в вашем проекте
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }

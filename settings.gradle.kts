@@ -16,6 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Добавляем Maven репозиторий для ksoap2
+        maven { url = uri("https://repo.maven.apache.org/maven2/") }
+        maven { url = uri("https://jitpack.io") } // Добавляем JitPack для дополнительных библиотек
     }
 }
 
