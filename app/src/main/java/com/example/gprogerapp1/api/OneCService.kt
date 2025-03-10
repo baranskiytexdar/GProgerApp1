@@ -13,6 +13,15 @@ interface OneCService {
         "Accept: text/xml"
     )
     @POST("prod.1cws")
+    suspend fun login(
+        @Body soapRequestBody: RequestBody
+    ): Response<ResponseBody>
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "Accept: text/xml"
+    )
+    @POST("prod.1cws")
     suspend fun getDataRaw(
         @Body soapRequestBody: RequestBody
     ): Response<ResponseBody>

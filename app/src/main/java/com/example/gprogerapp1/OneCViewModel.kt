@@ -34,14 +34,21 @@ class OneCViewModel : ViewModel() {
 
                 result.fold(
                     onSuccess = { operations ->
-                        _operations.value = operations
+                        if (operations.isEmpty()) {
+                            _error.value = "Нет данных для выбранного исполнителя"
+                            _operations.value = emptyList()
+                        } else {
+                            _operations.value = operations
+                        }
                     },
                     onFailure = { error ->
                         _error.value = error.message ?: "Неизвестная ошибка"
+                        _operations.value = emptyList()
                     }
                 )
             } catch (e: Exception) {
                 _error.value = "Ошибка: ${e.message}"
+                _operations.value = emptyList()
             } finally {
                 _isLoading.value = false
             }

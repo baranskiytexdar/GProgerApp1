@@ -21,16 +21,39 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             GProgerApp1Theme {
+                // Получаем экземпляр AuthViewModel для работы с авторизацией
+                val authViewModel: AuthViewModel = viewModel()
+                // Отслеживаем состояние авторизации
+                val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainScreen(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    // Проверяем, авторизован ли пользователь
+                    if (isLoggedIn) {
+                        // Если авторизован, показываем основной экран с возможностью выхода
+                        MainScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            viewModel = viewModel(),
+                            onLogout = { authViewModel.logout() }
+                        )
+                    } else {
+                        // Если не авторизован, показываем экран входа
+                        LoginScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            viewModel = authViewModel
+                        )
+                    }
                 }
             }
         }
@@ -38,7 +61,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(modifier: Modifier = Modifier, viewModel: OneCViewModel = viewModel()) {
+fun MainScreen(
+    modifier: Modifier = Modifier,
+    viewModel: OneCViewModel = viewModel(),
+    onLogout: () -> Unit
+) {
     // Получаем дату из требований (2025-02-18)
     var selectedDate by remember { mutableStateOf(LocalDate.of(2025, 2, 18)) }
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
@@ -69,11 +96,24 @@ fun MainScreen(modifier: Modifier = Modifier, viewModel: OneCViewModel = viewMod
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            Text(
-                text = "Сдельные наряды",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            // Добавляем строку с заголовком и кнопкой выхода
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Сдельные наряды",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+
+                // Кнопка выхода
+                Button(onClick = onLogout) {
+                    Text("Выйти")
+                }
+            }
 
             // Поле ввода даты с иконкой календаря
             OutlinedTextField(
@@ -163,9 +203,12 @@ fun MainScreen(modifier: Modifier = Modifier, viewModel: OneCViewModel = viewMod
         // Кнопка для выполнения запроса, в правом нижнем углу
         Button(
             onClick = {
+                // Используйте выбранную дату и исполнителя
+                viewModel.fetchOperations(
+                    date = apiFormattedDate,  // Дата в формате yyyy-MM-dd
+                    performer = ispolnitel     // Имя исполнителя
+                )
                 showResults = true
-                // Вызываем метод загрузки данных из ViewModel
-                viewModel.fetchOperations(apiFormattedDate, ispolnitel)
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)

@@ -8,6 +8,7 @@ import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.converter.simplexml.SimpleXmlConverterFactory
 import java.util.concurrent.TimeUnit
+import android.util.Base64
 
 object RetrofitClient {
     private const val BASE_URL = "http://192.168.5.28/unf_5/ws/"
@@ -23,14 +24,12 @@ object RetrofitClient {
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
         .addInterceptor { chain ->
-            // Кодируем логин и пароль в base64
             val credentials = "$USERNAME:$PASSWORD"
-            val encodedCredentials = android.util.Base64.encodeToString(
+            val encodedCredentials = Base64.encodeToString(
                 credentials.toByteArray(),
-                android.util.Base64.NO_WRAP
+                Base64.NO_WRAP
             )
 
-            // Добавляем заголовок Authorization к каждому запросу
             val request = chain.request().newBuilder()
                 .header("Authorization", "Basic $encodedCredentials")
                 .build()
