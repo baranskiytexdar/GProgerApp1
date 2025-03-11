@@ -61,6 +61,7 @@ class OneCRepository {
                     nomenklatura = extractValue(operationXml, "m:Номенклатура") ?: "",
                     operaciya = extractValue(operationXml, "m:ОперацияНаименование") ?: "",
                     kolichestvoPlan = extractValue(operationXml, "m:КоличествоПлан")?.toDoubleOrNull() ?: 0.0,
+                    kolichestvoFakt = extractValue(operationXml, "m:КоличествоФакт")?.toDoubleOrNull() ?: 0.0,
                     normaVremeni = extractValue(operationXml, "m:НормаВремени")?.toDoubleOrNull() ?: 0.0,
                     rascenka = extractValue(operationXml, "m:Расценка")?.toDoubleOrNull() ?: 0.0
                 )

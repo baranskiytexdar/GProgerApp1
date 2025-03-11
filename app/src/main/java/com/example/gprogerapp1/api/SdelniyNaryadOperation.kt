@@ -6,6 +6,7 @@ data class SdelniyNaryadOperation(
     val nomenklatura: String,
     val operaciya: String,
     val kolichestvoPlan: Double,
+    val kolichestvoFakt: Double,
     val normaVremeni: Double,
     val rascenka: Double
 )

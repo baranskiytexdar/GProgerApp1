@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -219,12 +221,23 @@ fun MainScreen(
     }
 }
 
+// app/src/main/java/com/example/gprogerapp1/MainActivity.kt
 @Composable
 fun OperationItem(operation: SdelniyNaryadOperation) {
+    // Определяем цвет карточки на основе соотношения плана и факта
+    val cardColor = when {
+        operation.kolichestvoFakt == 0.0 -> MaterialTheme.colorScheme.errorContainer // Красный для факта = 0
+        operation.kolichestvoFakt == operation.kolichestvoPlan -> MaterialTheme.colorScheme.primaryContainer // Зеленый для факта = плану
+        else -> Color(0xFFFFF9C4) // Желтый для факта != плану и факта != 0
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cardColor
+        )
     ) {
         Column(
             modifier = Modifier
@@ -258,7 +271,7 @@ fun OperationItem(operation: SdelniyNaryadOperation) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Показываем информацию о плане, норме и расценке в строку
+            // Показываем информацию о плане, факте, норме и расценке в строку
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -269,6 +282,22 @@ fun OperationItem(operation: SdelniyNaryadOperation) {
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium
                 )
+                Text(
+                    text = "Факт: ${operation.kolichestvoFakt}",
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    // Выделяем факт жирным, если он отличается от плана
+                    fontWeight = if (operation.kolichestvoFakt != operation.kolichestvoPlan)
+                        FontWeight.Bold else FontWeight.Normal
+                )
+            }
+
+            // Добавляем вторую строку для нормы времени и расценки
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            ) {
                 Text(
                     text = "Норма времени: ${operation.normaVremeni}",
                     modifier = Modifier.weight(1f),

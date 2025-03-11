@@ -18,7 +18,7 @@ import android.util.Base64
  */
 class OneCService {
     companion object {
-        private const val BASE_URL = "http://192.168.5.28/unf_5/" // Замените на реальный URL вашего сервера 1С УНФ
+        private const val BASE_URL = "http://192.168.5.28/unf_5/"
         private const val USERNAME = "БаранскийИ" // Замените на реальное имя пользователя
         private const val PASSWORD = "Nhbrjnf4" // Замените на реальный пароль
         private const val TIMEOUT = 30L // Таймаут в секундах
@@ -45,6 +45,7 @@ class OneCService {
                 СдельныйНарядОперации.Номенклатура КАК Номенклатура,
                 СдельныйНарядОперации.Операция КАК Операция,
                 СдельныйНарядОперации.КоличествоПлан КАК КоличествоПлан,
+                СдельныйНарядОперации.КоличествоФакт КАК КоличествоФакт,
                 СдельныйНарядОперации.НормаВремени КАК НормаВремени,
                 СдельныйНарядОперации.Расценка КАК Расценка
             ИЗ
@@ -115,6 +116,7 @@ class OneCService {
                     nomenklatura = jsonResult.getString("Номенклатура"),
                     operaciya = jsonResult.getString("Операция"),
                     kolichestvoPlan = jsonResult.getDouble("КоличествоПлан"),
+                    kolichestvoFakt = jsonResult.getDouble("КоличествоФакт"),
                     normaVremeni = jsonResult.getDouble("НормаВремени"),
                     rascenka = jsonResult.getDouble("Расценка")
                 )
@@ -145,6 +147,7 @@ class OneCService {
                 nomenklatura = "Стол письменный",
                 operaciya = "Сборка",
                 kolichestvoPlan = 5.0,
+                kolichestvoFakt = 5.0,
                 normaVremeni = 2.5,
                 rascenka = 1200.0
             ),
@@ -154,6 +157,7 @@ class OneCService {
                 nomenklatura = "Шкаф купе",
                 operaciya = "Монтаж",
                 kolichestvoPlan = 2.0,
+                kolichestvoFakt = 1.0,
                 normaVremeni = 4.0,
                 rascenka = 2500.0
             ),
@@ -163,6 +167,7 @@ class OneCService {
                 nomenklatura = "Стул офисный",
                 operaciya = "Сборка",
                 kolichestvoPlan = 10.0,
+                kolichestvoFakt = 0.0,
                 normaVremeni = 0.5,
                 rascenka = 300.0
             )

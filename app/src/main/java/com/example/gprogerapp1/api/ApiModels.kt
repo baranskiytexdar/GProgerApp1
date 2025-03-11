@@ -22,6 +22,9 @@ data class SdelniyNaryadOperationResponse(
     @field:Element(name = "KolichestvoPlan", required = false)
     var kolichestvoPlan: Double = 0.0,
 
+    @field:Element(name = "kolichestvoFakt", required = false)
+    var kolichetstvoFakt: Double = 0.0,
+
     @field:Element(name = "NormaVremeni", required = false)
     var normaVremeni: Double = 0.0,
 
@@ -44,6 +47,7 @@ fun SdelniyNaryadOperationResponse.toOperation(): SdelniyNaryadOperation {
         nomenklatura = this.nomenklatura,
         operaciya = this.operaciya,
         kolichestvoPlan = this.kolichestvoPlan,
+        kolichestvoFakt = this.kolichetstvoFakt,
         normaVremeni = this.normaVremeni,
         rascenka = this.rascenka
     )
