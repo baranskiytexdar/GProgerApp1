@@ -109,8 +109,7 @@ class OneCRepository {
                     val responseBody = response.body()?.string() ?: ""
                     Log.d("OneCRepository", "Ответ на установку данных: $responseBody")
 
-                    val success = responseBody.contains("<m:return>true</m:return>") ||
-                            responseBody.contains("<m:return>1</m:return>")
+                    val success = responseBody.contains("<m:return") && responseBody.contains(">0</m:return>")
 
                     if (success) {
                         Log.d("OneCRepository", "Данные успешно обновлены")

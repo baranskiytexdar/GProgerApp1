@@ -9,6 +9,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.simplexml.SimpleXmlConverterFactory
 import java.util.concurrent.TimeUnit
 import android.util.Base64
+import android.util.Log
 
 object RetrofitClient {
     private const val BASE_URL = "http://192.168.5.28/unf_5/ws/"
@@ -36,9 +37,9 @@ object RetrofitClient {
 
             chain.proceed(request)
         }
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .writeTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(90, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(90, TimeUnit.SECONDS)
         .build()
 
     // Создаем Retrofit клиент с XML конвертером
@@ -65,15 +66,33 @@ object RetrofitClient {
     }
     // Создаем SOAP-конверт для функции SetData
     fun createSetDataSoapEnvelope(naryadNumber: String, naryadDate: String, operationCode: String, lineNumber: Double, actualQuantity: Double): String {
+        // Преобразование даты в формат YYYY-MM-DD
+        val formattedDate = try {
+            // Если дата в формате "17.02.2025"
+            if (naryadDate.contains('.')) {
+                naryadDate.split('.').reversed().joinToString("-")
+            }
+            // Если дата в формате "2025-02-17T10:39:02"
+            else if (naryadDate.contains('T')) {
+                naryadDate.split('T')[0]
+            }
+            else {
+                naryadDate
+            }
+        } catch (e: Exception) {
+            Log.e("DateFormatter", "Ошибка преобразования даты: $naryadDate", e)
+            naryadDate
+        }
+
         return """<?xml version='1.0' encoding='utf-8'?>
-<soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/">
+<soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns0="http://wsproduction.ru">
     <soap-env:Body>
-        <ns0:SetData xmlns:ns0="http://wsproduction.ru">
-            <ns0:NaryadNumber>$naryadNumber</ns0:NaryadNumber>
-            <ns0:NaryadDate>$naryadDate</ns0:NaryadDate>
-            <ns0:OperationCode>$operationCode</ns0:OperationCode>
-            <ns0:LineNumber>$lineNumber</ns0:LineNumber>
-            <ns0:ActualQuantity>$actualQuantity</ns0:ActualQuantity>
+        <ns0:SetData>
+            <ns0:НомерНаряда>$naryadNumber</ns0:НомерНаряда>
+            <ns0:ДатаНаряда>$formattedDate</ns0:ДатаНаряда>
+            <ns0:КодОперации>$operationCode</ns0:КодОперации>
+            <ns0:НомерСтроки>${lineNumber.toInt()}</ns0:НомерСтроки>
+            <ns0:КоличествоФакт>$actualQuantity</ns0:КоличествоФакт>
         </ns0:SetData>
     </soap-env:Body>
 </soap-env:Envelope>"""
