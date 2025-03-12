@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.clickable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,28 +69,22 @@ fun MainScreen(
     viewModel: OneCViewModel = viewModel(),
     onLogout: () -> Unit
 ) {
-    // Получаем дату из требований (2025-02-18)
+    // Существующие состояния
     var selectedDate by remember { mutableStateOf(LocalDate.of(2025, 2, 18)) }
     val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     val formattedDate = selectedDate.format(dateFormatter)
-
-    // Формат даты для API (yyyy-MM-dd)
     val apiDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val apiFormattedDate = selectedDate.format(apiDateFormatter)
-
-    // Состояния для отслеживания данных
     val operations by viewModel.operations.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-
-    // Исполнитель из требований
     var ispolnitel by remember { mutableStateOf("Дудникова  Наталья Александровна") }
-
-    // Контекст для диалога выбора даты
     val context = LocalContext.current
-
-    // Состояние для отображения данных
     var showResults by remember { mutableStateOf(false) }
+
+    // Получаем состояние выделения
+    val selectedOperations by viewModel.selectedOperations.collectAsState()
+    val selectionMode by viewModel.selectionMode.collectAsState()
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -98,7 +93,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Добавляем строку с заголовком и кнопкой выхода
+            // Строка с заголовком и кнопкой выхода
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -111,13 +106,12 @@ fun MainScreen(
                     style = MaterialTheme.typography.headlineMedium
                 )
 
-                // Кнопка выхода
                 Button(onClick = onLogout) {
                     Text("Выйти")
                 }
             }
 
-            // Поле ввода даты с иконкой календаря
+            // Поле ввода даты и исполнителя (существующий код)
             OutlinedTextField(
                 value = formattedDate,
                 onValueChange = { /* Мы не обрабатываем ручной ввод */ },
@@ -148,7 +142,6 @@ fun MainScreen(
                 }
             )
 
-            // Поле для ввода исполнителя
             OutlinedTextField(
                 value = ispolnitel,
                 onValueChange = { ispolnitel = it },
@@ -181,19 +174,37 @@ fun MainScreen(
                         )
                     }
                     else -> {
+                        // Панель групповых действий
+                        if (selectionMode) {
+                            GroupActionPanel(
+                                selectedCount = selectedOperations.size,
+                                isLoading = isLoading,
+                                onMarkCompleted = { viewModel.markAsCompleted() },
+                                onMarkPartiallyCompleted = { viewModel.markAsPartiallyCompleted() },
+                                onCancelSelection = { viewModel.clearSelection() },
+                                onCancelCompletion = { viewModel.cancelCompletion() }
+                            )
+                        }
+
                         Text(
                             text = "Результаты запроса:",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
+                        // Список операций с поддержкой выбора
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                         ) {
                             items(operations) { operation ->
-                                OperationItem(operation)
+                                val isSelected = selectedOperations.contains(operation.ssylka)
+                                OperationItem(
+                                    operation = operation,
+                                    isSelected = isSelected,
+                                    onToggleSelection = { viewModel.toggleOperationSelection(it) }
+                                )
                                 Divider()
                             }
                         }
@@ -203,29 +214,120 @@ fun MainScreen(
         }
 
         // Кнопка для выполнения запроса, в правом нижнем углу
-        Button(
-            onClick = {
-                // Используйте выбранную дату и исполнителя
-                viewModel.fetchOperations(
-                    date = apiFormattedDate,  // Дата в формате yyyy-MM-dd
-                    performer = ispolnitel     // Имя исполнителя
-                )
-                showResults = true
-            },
+        if (!selectionMode) {
+            Button(
+                onClick = {
+                    viewModel.fetchOperations(
+                        date = apiFormattedDate,
+                        performer = ispolnitel
+                    )
+                    showResults = true
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Text("Получить данные")
+            }
+        }
+    }
+}
+@Composable
+fun GroupActionPanel(
+    selectedCount: Int,
+    isLoading: Boolean,
+    onMarkCompleted: () -> Unit,
+    onMarkPartiallyCompleted: () -> Unit,
+    onCancelSelection: () -> Unit,
+    onCancelCompletion: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text("Получить данные")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Выбрано операций: $selectedCount",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onMarkCompleted,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text("Выполнено")
+                }
+
+                Button(
+                    onClick = onMarkPartiallyCompleted,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text("Частично")
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onCancelSelection,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text("Отмена выделения")
+                }
+
+                OutlinedButton(
+                    onClick = onCancelCompletion,
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text("Отмена выполнения")
+                }
+            }
         }
     }
 }
 
-// app/src/main/java/com/example/gprogerapp1/MainActivity.kt
 @Composable
-fun OperationItem(operation: SdelniyNaryadOperation) {
-    // Определяем цвет карточки на основе соотношения плана и факта
+fun OperationItem(
+    operation: SdelniyNaryadOperation,
+    isSelected: Boolean,
+    onToggleSelection: (String) -> Unit
+) {
+    // Определяем цвет карточки на основе соотношения плана и факта и выделения
     val cardColor = when {
+        isSelected -> MaterialTheme.colorScheme.surfaceVariant // Цвет для выделенной карточки
         operation.kolichestvoFakt == 0.0 -> MaterialTheme.colorScheme.errorContainer // Красный для факта = 0
         operation.kolichestvoFakt == operation.kolichestvoPlan -> MaterialTheme.colorScheme.primaryContainer // Зеленый для факта = плану
         else -> Color(0xFFFFF9C4) // Желтый для факта != плану и факта != 0
@@ -234,80 +336,138 @@ fun OperationItem(operation: SdelniyNaryadOperation) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 4.dp)
+            .clickable { onToggleSelection(operation.ssylka) },
         colors = CardDefaults.cardColors(
             containerColor = cardColor
         )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Выделяем операцию крупным шрифтом
-            Text(
-                text = operation.operaciya,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Код операции и заказ покупателя более мелким шрифтом
-            Row {
-                Text(
-                    text = "Код: ${operation.ssylka}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
+            // Чекбокс для выбора
+            if (isSelected) {
+                Checkbox(
+                    checked = true,
+                    onCheckedChange = { onToggleSelection(operation.ssylka) },
+                    modifier = Modifier.padding(start = 8.dp)
                 )
-                if (operation.zakazPokupatelya.isNotEmpty()) {
+            }
+
+            // Содержимое карточки
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                // Заголовок с операцией и номером/датой наряда
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        text = "Заказ: ${operation.zakazPokupatelya}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = operation.operaciya,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
+
+                    if (operation.naryadNumber.isNotEmpty()) {
+                        Text(
+                            text = "Наряд: ${operation.naryadNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                // Дата наряда
+                if (operation.naryadDate.isNotEmpty()) {
+                    Text(
+                        text = "от ${operation.naryadDate}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
 
-            // Показываем информацию о плане, факте, норме и расценке в строку
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                Text(
-                    text = "План: ${operation.kolichestvoPlan}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Факт: ${operation.kolichestvoFakt}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    // Выделяем факт жирным, если он отличается от плана
-                    fontWeight = if (operation.kolichestvoFakt != operation.kolichestvoPlan)
-                        FontWeight.Bold else FontWeight.Normal
-                )
-            }
+                Spacer(modifier = Modifier.height(4.dp))
 
-            // Добавляем вторую строку для нормы времени и расценки
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
-            ) {
-                Text(
-                    text = "Норма времени: ${operation.normaVremeni}",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Расценка: ${operation.rascenka} ₽",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                // Информация о коде операции и номере строки
+                Row {
+                    if (operation.operationCode.isNotEmpty()) {
+                        Text(
+                            text = "Код операции: ${operation.operationCode}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (operation.lineNumber.isNotEmpty()) {
+                        Text(
+                            text = "Строка №${operation.lineNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                // Код операции и заказ покупателя
+                Row {
+                    Text(
+                        text = "ID: ${operation.ssylka}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (operation.zakazPokupatelya.isNotEmpty()) {
+                        Text(
+                            text = "Заказ: ${operation.zakazPokupatelya}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Показываем информацию о плане, факте, норме и расценке в строку
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Text(
+                        text = "План: ${operation.kolichestvoPlan}",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Факт: ${operation.kolichestvoFakt}",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        // Выделяем факт жирным, если он отличается от плана
+                        fontWeight = if (operation.kolichestvoFakt != operation.kolichestvoPlan)
+                            FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+
+                // Добавляем вторую строку для нормы времени и расценки
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = "Норма времени: ${operation.normaVremeni}",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Расценка: ${operation.rascenka} ₽",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

@@ -25,4 +25,9 @@ interface OneCService {
     suspend fun getDataRaw(
         @Body soapRequestBody: RequestBody
     ): Response<ResponseBody>
+
+    @POST("prod.1cws")
+    suspend fun setDataRaw(
+        @Body soapRequestBody: RequestBody
+    ): Response<ResponseBody>
 }

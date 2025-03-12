@@ -12,10 +12,12 @@ import java.io.IOException
 //import java.util.Base64
 import java.util.concurrent.TimeUnit
 import android.util.Base64
+import android.util.Log
 
 /**
  * Сервис для работы с 1С УНФ через REST API.
  */
+
 class OneCService {
     companion object {
         private const val BASE_URL = "http://192.168.5.28/unf_5/"
@@ -104,10 +106,42 @@ class OneCService {
         val jsonResponse = JSONObject(responseBody)
         val jsonResults = jsonResponse.getJSONArray("results")
 
+        // Логируем всю структуру JSON для анализа
+        Log.d("OneCService", "JSON Response: $responseBody")
+
         val operations = mutableListOf<SdelniyNaryadOperation>()
 
         for (i in 0 until jsonResults.length()) {
             val jsonResult = jsonResults.getJSONObject(i)
+
+            // Выводим все ключи в JSON-объекте
+            val keys = jsonResult.keys()
+            val keysStr = StringBuilder("JSON keys: ")
+            while (keys.hasNext()) {
+                val key = keys.next()
+                keysStr.append("$key, ")
+            }
+            Log.d("OneCService", keysStr.toString())
+
+            // Проверяем наличие нужных ключей
+            Log.d("OneCService", "Содержит 'Номер': ${jsonResult.has("Номер")}")
+            Log.d("OneCService", "Содержит 'Дата': ${jsonResult.has("Дата")}")
+            Log.d("OneCService", "Содержит 'ОперацияКод': ${jsonResult.has("ОперацияКод")}")
+            Log.d("OneCService", "Содержит 'НомерСтроки': ${jsonResult.has("НомерСтроки")}")
+
+            // Если ключи есть, выводим их значения
+            if (jsonResult.has("Номер")) {
+                Log.d("OneCService", "Номер: ${jsonResult.getString("Номер")}")
+            }
+            if (jsonResult.has("Дата")) {
+                Log.d("OneCService", "Дата: ${jsonResult.getString("Дата")}")
+            }
+
+            // Пытаемся безопасно получить значения
+            val naryadNumber = if (jsonResult.has("Номер")) jsonResult.getString("Номер") else ""
+            val naryadDate = if (jsonResult.has("Дата")) jsonResult.getString("Дата") else ""
+            val operationCode = if (jsonResult.has("ОперацияКод")) jsonResult.getString("ОперацияКод") else ""
+            val lineNumber = if (jsonResult.has("НомерСтроки")) jsonResult.getString("НомерСтроки") else ""
 
             operations.add(
                 SdelniyNaryadOperation(
@@ -118,9 +152,16 @@ class OneCService {
                     kolichestvoPlan = jsonResult.getDouble("КоличествоПлан"),
                     kolichestvoFakt = jsonResult.getDouble("КоличествоФакт"),
                     normaVremeni = jsonResult.getDouble("НормаВремени"),
-                    rascenka = jsonResult.getDouble("Расценка")
+                    rascenka = jsonResult.getDouble("Расценка"),
+                    lineNumber = lineNumber,
+                    naryadNumber = naryadNumber,
+                    naryadDate = naryadDate,
+                    operationCode = operationCode
                 )
             )
+
+            // Логируем созданный объект для проверки
+            Log.d("OneCService", "Создан объект: naryadNumber=$naryadNumber, naryadDate=$naryadDate, operationCode=$operationCode, lineNumber=$lineNumber")
         }
 
         return operations
@@ -149,7 +190,11 @@ class OneCService {
                 kolichestvoPlan = 5.0,
                 kolichestvoFakt = 5.0,
                 normaVremeni = 2.5,
-                rascenka = 1200.0
+                rascenka = 1200.0,
+                naryadNumber = "НР-001",
+                naryadDate = "18.02.2025",
+                lineNumber = "1",
+                operationCode = "СБ001"
             ),
             SdelniyNaryadOperation(
                 ssylka = "Документ.СдельныйНаряд.12346",
@@ -159,7 +204,11 @@ class OneCService {
                 kolichestvoPlan = 2.0,
                 kolichestvoFakt = 1.0,
                 normaVremeni = 4.0,
-                rascenka = 2500.0
+                rascenka = 2500.0,
+                naryadNumber = "НР-002",
+                naryadDate = "19.02.2025",
+                lineNumber = "2",
+                operationCode = "МТ001"
             ),
             SdelniyNaryadOperation(
                 ssylka = "Документ.СдельныйНаряд.12347",
@@ -169,7 +218,11 @@ class OneCService {
                 kolichestvoPlan = 10.0,
                 kolichestvoFakt = 0.0,
                 normaVremeni = 0.5,
-                rascenka = 300.0
+                rascenka = 300.0,
+                naryadNumber = "НР-003",
+                naryadDate = "20.02.2025",
+                lineNumber = "3",
+                operationCode = "СБ002"
             )
         )
     }

@@ -23,6 +23,193 @@ class OneCViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Добавляем состояние для выбранных операций
+    private val _selectedOperations = MutableStateFlow<Set<String>>(emptySet())
+    val selectedOperations: StateFlow<Set<String>> = _selectedOperations.asStateFlow()
+
+    // Флаг режима выбора
+    private val _selectionMode = MutableStateFlow(false)
+    val selectionMode: StateFlow<Boolean> = _selectionMode.asStateFlow()
+
+    // Функции для управления выбором
+    fun toggleOperationSelection(ssylka: String) {
+        val currentSelected = _selectedOperations.value.toMutableSet()
+        if (currentSelected.contains(ssylka)) {
+            currentSelected.remove(ssylka)
+        } else {
+            currentSelected.add(ssylka)
+        }
+        _selectedOperations.value = currentSelected
+        _selectionMode.value = currentSelected.isNotEmpty()
+    }
+    fun clearSelection() {
+        _selectedOperations.value = emptySet()
+        _selectionMode.value = false
+    }
+
+
+    // Обработка групповых действий с обновлением фактического количества на сервере
+    fun markAsCompleted() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val selectedIds = _selectedOperations.value
+                val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
+
+                val results = operationsToUpdate.map { operation ->
+                    val actualQuantity = operation.kolichestvoPlan
+                    repository.setActualQuantity(
+                        operation.naryadNumber,
+                        operation.naryadDate,  // Добавляем дату наряда
+                        operation.operationCode,
+                        operation.lineNumber,
+                        actualQuantity
+                    )
+                }
+
+                // Проверяем результаты всех запросов
+                val allSuccessful = results.all { it.isSuccess }
+
+                if (allSuccessful) {
+                    // Обновляем локальные данные
+                    val updatedOperations = _operations.value.map { operation ->
+                        if (selectedIds.contains(operation.ssylka)) {
+                            operation.copy(kolichestvoFakt = operation.kolichestvoPlan)
+                        } else {
+                            operation
+                        }
+                    }
+                    _operations.value = updatedOperations
+                } else {
+                    _error.value = "Не удалось обновить некоторые операции"
+                }
+            } catch (e: Exception) {
+                _error.value = "Ошибка при обновлении данных: ${e.message}"
+            } finally {
+                _isLoading.value = false
+                clearSelection()
+            }
+        }
+    }
+
+    fun markAsPartiallyCompleted() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val selectedIds = _selectedOperations.value
+                val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
+
+                val results = operationsToUpdate.map { operation ->
+                    val actualQuantity = operation.kolichestvoPlan
+                    repository.setActualQuantity(
+                        operation.naryadNumber,
+                        operation.naryadDate,  // Добавляем дату наряда
+                        operation.operationCode,
+                        operation.lineNumber,
+                        actualQuantity
+                    )
+                }
+
+                val allSuccessful = results.all { it.isSuccess }
+
+                if (allSuccessful) {
+                    val updatedOperations = _operations.value.map { operation ->
+                        if (selectedIds.contains(operation.ssylka)) {
+                            operation.copy(kolichestvoFakt = operation.kolichestvoPlan * 0.5)
+                        } else {
+                            operation
+                        }
+                    }
+                    _operations.value = updatedOperations
+                } else {
+                    _error.value = "Не удалось обновить некоторые операции"
+                }
+            } catch (e: Exception) {
+                _error.value = "Ошибка при обновлении данных: ${e.message}"
+            } finally {
+                _isLoading.value = false
+                clearSelection()
+            }
+        }
+    }
+
+    fun cancelCompletion() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val selectedIds = _selectedOperations.value
+                val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
+
+                val results = operationsToUpdate.map { operation ->
+                    val actualQuantity = operation.kolichestvoPlan
+                    repository.setActualQuantity(
+                        operation.naryadNumber,
+                        operation.naryadDate,  // Добавляем дату наряда
+                        operation.operationCode,
+                        operation.lineNumber,
+                        actualQuantity
+                    )
+                }
+
+                val allSuccessful = results.all { it.isSuccess }
+
+                if (allSuccessful) {
+                    val updatedOperations = _operations.value.map { operation ->
+                        if (selectedIds.contains(operation.ssylka)) {
+                            operation.copy(kolichestvoFakt = 0.0)
+                        } else {
+                            operation
+                        }
+                    }
+                    _operations.value = updatedOperations
+                } else {
+                    _error.value = "Не удалось обновить некоторые операции"
+                }
+            } catch (e: Exception) {
+                _error.value = "Ошибка при обновлении данных: ${e.message}"
+            } finally {
+                _isLoading.value = false
+                clearSelection()
+            }
+        }
+    }
+
+    // Функция для обновления фактического количества одной операции
+    fun updateActualQuantity(operation: SdelniyNaryadOperation, actualQuantity: Double) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                val result = repository.setActualQuantity(
+                    operation.naryadNumber,
+                    operation.naryadDate,  // Добавляем дату наряда
+                    operation.operationCode,
+                    operation.lineNumber,
+                    actualQuantity
+                )
+
+                result.fold(
+                    onSuccess = {
+                        val updatedOperations = _operations.value.map {
+                            if (it.ssylka == operation.ssylka) {
+                                it.copy(kolichestvoFakt = actualQuantity)
+                            } else {
+                                it
+                            }
+                        }
+                        _operations.value = updatedOperations
+                    },
+                    onFailure = { error ->
+                        _error.value = error.message ?: "Не удалось обновить данные"
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Ошибка при обновлении данных: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
     // Функция для загрузки данных
     fun fetchOperations(date: String, performer: String) {
         viewModelScope.launch {

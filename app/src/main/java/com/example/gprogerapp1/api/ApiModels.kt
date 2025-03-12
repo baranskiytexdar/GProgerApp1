@@ -29,7 +29,19 @@ data class SdelniyNaryadOperationResponse(
     var normaVremeni: Double = 0.0,
 
     @field:Element(name = "Rascenka", required = false)
-    var rascenka: Double = 0.0
+    var rascenka: Double = 0.0,
+
+    @field:Element(name = "NaryadNumber", required = false)
+    var naryadNumber: String = "",
+
+    @field:Element(name = "NaryadDate", required = false)
+    var naryadDate: String = "",
+
+    @field:Element(name = "LineNumber", required = false)
+    var lineNumber: String = "",
+
+    @field:Element(name = "OperationCode", required = false)
+    var operationCode: String = ""
 )
 
 // Для корневого элемента ответа с массивом операций
@@ -49,6 +61,10 @@ fun SdelniyNaryadOperationResponse.toOperation(): SdelniyNaryadOperation {
         kolichestvoPlan = this.kolichestvoPlan,
         kolichestvoFakt = this.kolichetstvoFakt,
         normaVremeni = this.normaVremeni,
-        rascenka = this.rascenka
+        rascenka = this.rascenka,
+        naryadNumber = this.naryadNumber,
+        naryadDate = this.naryadDate,
+        lineNumber = this.lineNumber,
+        operationCode = this.operationCode
     )
 }

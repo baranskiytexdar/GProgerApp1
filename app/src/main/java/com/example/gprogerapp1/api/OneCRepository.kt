@@ -63,10 +63,15 @@ class OneCRepository {
                     kolichestvoPlan = extractValue(operationXml, "m:КоличествоПлан")?.toDoubleOrNull() ?: 0.0,
                     kolichestvoFakt = extractValue(operationXml, "m:КоличествоФакт")?.toDoubleOrNull() ?: 0.0,
                     normaVremeni = extractValue(operationXml, "m:НормаВремени")?.toDoubleOrNull() ?: 0.0,
-                    rascenka = extractValue(operationXml, "m:Расценка")?.toDoubleOrNull() ?: 0.0
+                    rascenka = extractValue(operationXml, "m:Расценка")?.toDoubleOrNull() ?: 0.0,
+                    naryadNumber = extractValue(operationXml, "m:Номер") ?: "",
+                    naryadDate = extractValue(operationXml, "m:Дата") ?: "",
+                    lineNumber = extractValue(operationXml, "m:НомерСтроки") ?: "",
+                    operationCode = extractValue(operationXml, "m:ОперацияКод") ?: ""
                 )
 
                 operations.add(operation)
+                Log.d("OneCRepository", "Добавлена операция: ${operation.operaciya}, наряд: ${operation.naryadNumber}")
             }
 
             Log.d("OneCRepository", "Распарсено операций: ${operations.size}")
@@ -85,6 +90,45 @@ class OneCRepository {
             matcher.group(1)?.trim()
         } else {
             null
+        }
+    }
+    suspend fun setActualQuantity(naryadNumber: String, naryadDate: String, operationCode: String, lineNumber: String, actualQuantity: Double): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val lineNumberDouble = lineNumber.toDoubleOrNull() ?: 0.0
+                Log.d("OneCRepository", "Отправка данных: Наряд=$naryadNumber, Дата=$naryadDate, Операция=$operationCode, Строка=$lineNumberDouble, Количество=$actualQuantity")
+
+                val soapEnvelope = RetrofitClient.createSetDataSoapEnvelope(
+                    naryadNumber, naryadDate, operationCode, lineNumberDouble, actualQuantity
+                )
+                val requestBody = RetrofitClient.createRequestBody(soapEnvelope)
+
+                val response = api.setDataRaw(requestBody)
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()?.string() ?: ""
+                    Log.d("OneCRepository", "Ответ на установку данных: $responseBody")
+
+                    val success = responseBody.contains("<m:return>true</m:return>") ||
+                            responseBody.contains("<m:return>1</m:return>")
+
+                    if (success) {
+                        Log.d("OneCRepository", "Данные успешно обновлены")
+                        Result.success(true)
+                    } else {
+                        Log.e("OneCRepository", "Ошибка обновления данных в 1С")
+                        Result.failure(Exception("Не удалось обновить данные"))
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    Log.e("OneCRepository", "Ошибка запроса: ${response.code()} ${response.message()}")
+                    Log.e("OneCRepository", "Тело ошибки: $errorBody")
+                    Result.failure(Exception("Ошибка сервера: ${response.code()}"))
+                }
+            } catch (e: Exception) {
+                Log.e("OneCRepository", "Исключение при отправке данных", e)
+                Result.failure(Exception("Ошибка связи с сервером: ${e.message}"))
+            }
         }
     }
 }
