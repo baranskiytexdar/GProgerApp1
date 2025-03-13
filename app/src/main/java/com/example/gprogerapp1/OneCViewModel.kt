@@ -141,7 +141,7 @@ class OneCViewModel : ViewModel() {
                 val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
 
                 val results = operationsToUpdate.map { operation ->
-                    val actualQuantity = operation.kolichestvoPlan
+                    val actualQuantity = 0.0 //operation.kolichestvoPlan
                     repository.setActualQuantity(
                         operation.naryadNumber,
                         operation.naryadDate,  // Добавляем дату наряда
