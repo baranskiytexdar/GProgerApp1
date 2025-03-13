@@ -17,12 +17,12 @@ class AuthManager(private val context: Context) {
     suspend fun login(username: String, password: String): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
+                // Обновляем учетные данные перед запросом
+                RetrofitClient.updateCredentials(username, password)
+
                 val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
 
-                Log.d("AuthManager", "Параметры запроса:")
-                Log.d("AuthManager", "Дата: $currentDate")
-                Log.d("AuthManager", "Исполнитель: $username")
-
+                // Существующий код аутентификации
                 val soapEnvelope = """<?xml version='1.0' encoding='utf-8'?>
 <soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/" 
     xmlns:ns0="http://wsproduction.ru">
@@ -35,36 +35,29 @@ class AuthManager(private val context: Context) {
 </soap-env:Envelope>"""
 
                 val requestBody = RetrofitClient.createRequestBody(soapEnvelope)
-
-                Log.d("AuthManager", "SOAP-конверт: $soapEnvelope")
-
                 val response = RetrofitClient.oneCService.login(requestBody)
 
-                Log.d("AuthManager", "Код ответа: ${response.code()}")
-
+                // Существующая логика проверки ответа
                 if (response.isSuccessful) {
                     val responseBody = response.body()?.string() ?: ""
-
-                    Log.d("AuthManager", "Тело ответа: $responseBody")
-
                     val isAuthenticated = checkAuthenticationResponse(responseBody)
 
                     if (isAuthenticated) {
                         saveAuthData(username, password)
                         Result.success(true)
                     } else {
-                        Log.e("AuthManager", "Аутентификация не прошла")
+                        // Возвращаем учетные данные по умолчанию в случае неудачи
+                        RetrofitClient.updateCredentials("БаранскийИ", "Nhbrjnf9")
                         Result.failure(Exception("Не удалось пройти аутентификацию"))
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string() ?: "Пустое тело ошибки"
-                    Log.e("AuthManager", "Ошибка входа: ${response.code()} ${response.message()}")
-                    Log.e("AuthManager", "Тело ошибки: $errorBody")
-
-                    Result.failure(Exception("Ошибка сервера: ${response.code()} $errorBody"))
+                    // Возвращаем учетные данные по умолчанию в случае неудачи
+                    RetrofitClient.updateCredentials("БаранскийИ", "Nhbrjnf9")
+                    Result.failure(Exception("Ошибка сервера: ${response.code()}"))
                 }
             } catch (e: Exception) {
-                Log.e("AuthManager", "Критическая ошибка при входе", e)
+                // Возвращаем учетные данные по умолчанию в случае исключения
+                RetrofitClient.updateCredentials("БаранскийИ", "Nhbrjnf9")
                 Result.failure(Exception("Ошибка связи с сервером: ${e.message}"))
             }
         }

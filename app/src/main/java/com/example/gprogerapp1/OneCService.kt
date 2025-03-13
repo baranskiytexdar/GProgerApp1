@@ -13,6 +13,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import android.util.Base64
 import android.util.Log
+import com.example.gprogerapp1.api.RetrofitClient
 
 /**
  * Сервис для работы с 1С УНФ через REST API.
@@ -21,8 +22,8 @@ import android.util.Log
 class OneCService {
     companion object {
         private const val BASE_URL = "http://192.168.5.28/unf_5/"
-        private const val USERNAME = "БаранскийИ" // Замените на реальное имя пользователя
-        private const val PASSWORD = "Nhbrjnf4" // Замените на реальный пароль
+//        private const val USERNAME = "БаранскийИ" // Замените на реальное имя пользователя
+//        private const val PASSWORD = "Nhbrjnf4" // Замените на реальный пароль
         private const val TIMEOUT = 30L // Таймаут в секундах
     }
 
@@ -66,10 +67,12 @@ class OneCService {
         }.toString()
 
         // Создаем HTTP запрос
+        // Получаем текущие учетные данные из RetrofitClient
+        val (username, password) = RetrofitClient.getCurrentCredentials()
         val request = Request.Builder()
             .url("${BASE_URL}query") // Предполагается, что у 1C API есть метод /query для выполнения запросов
             .post(requestBody.toRequestBody("application/json".toMediaType()))
-            .addHeader("Authorization", getBasicAuthHeader(USERNAME, PASSWORD))
+            .addHeader("Authorization", getBasicAuthHeader( username, password))
             .addHeader("Content-Type", "application/json")
             .build()
 

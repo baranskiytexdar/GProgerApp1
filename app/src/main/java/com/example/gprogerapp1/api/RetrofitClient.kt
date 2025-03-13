@@ -13,19 +13,28 @@ import android.util.Log
 
 object RetrofitClient {
     private const val BASE_URL = "http://192.168.5.28/unf_5/ws/"
-    private const val USERNAME = "БаранскийИ"
-    private const val PASSWORD = "Nhbrjnf9"
+    private var USERNAME: String = "БаранскийИ"
+    private var PASSWORD: String = "Nhbrjnf9"
 
-    // Создаем логгер для отладки HTTP запросов и ответов
+    // Логгер для отладки HTTP запросов и ответов
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
+    }
+
+    fun updateCredentials(username: String, password: String) {
+        USERNAME = username
+        PASSWORD = password
+    }
+
+    fun getCurrentCredentials(): Pair<String, String> {
+        return Pair(USERNAME, PASSWORD)
     }
 
     // Настраиваем HTTP клиент с таймаутами, логгером и аутентификацией
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
         .addInterceptor { chain ->
-            val credentials = "$USERNAME:$PASSWORD"
+            val credentials = "${getCurrentCredentials().first}:${getCurrentCredentials().second}"
             val encodedCredentials = Base64.encodeToString(
                 credentials.toByteArray(),
                 Base64.NO_WRAP
@@ -52,6 +61,39 @@ object RetrofitClient {
     // Создаем экземпляр API сервиса
     val oneCService: OneCService = retrofit.create(OneCService::class.java)
 
+    // Пересоздаем клиент при каждом обновлении учетных данных
+    private fun recreateRetrofitClient(): Retrofit {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor { chain ->
+                val credentials = "$USERNAME:$PASSWORD"
+                val encodedCredentials = Base64.encodeToString(
+                    credentials.toByteArray(),
+                    Base64.NO_WRAP
+                )
+
+                val request = chain.request().newBuilder()
+                    .header("Authorization", "Basic $encodedCredentials")
+                    .build()
+
+                chain.proceed(request)
+            }
+            .connectTimeout(90, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
+            .writeTimeout(90, TimeUnit.SECONDS)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(SimpleXmlConverterFactory.create())
+            .build()
+    }
+
+    // Динамическое обновление сервиса
+    val dynamicOneCService: OneCService
+        get() = recreateRetrofitClient().create(OneCService::class.java)
+
     // Вспомогательная функция для создания SOAP-конверта в точном формате, который ожидает 1С
     fun createSoapEnvelope(date: String, performer: String): String {
         return """<?xml version='1.0' encoding='utf-8'?>
@@ -64,6 +106,7 @@ object RetrofitClient {
             ?: throw IllegalArgumentException("Неверный тип медиа")
         return RequestBody.create(mediaType, soapEnvelope)
     }
+
     // Создаем SOAP-конверт для функции SetData
     fun createSetDataSoapEnvelope(naryadNumber: String, naryadDate: String, operationCode: String, lineNumber: Double, actualQuantity: Double): String {
         // Преобразование даты в формат YYYY-MM-DD
