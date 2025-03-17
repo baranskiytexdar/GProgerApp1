@@ -29,7 +29,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
-
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,6 +88,21 @@ fun MainScreen(
     val selectedOperations by viewModel.selectedOperations.collectAsState()
     val selectionMode by viewModel.selectionMode.collectAsState()
 
+    // Состояние для диалога частичного выполнения
+    var selectedOperationForPartialCompletion by remember { mutableStateOf<SdelniyNaryadOperation?>(null) }
+
+    // Диалог для частичного выполнения
+    selectedOperationForPartialCompletion?.let { operation ->
+        PartialCompletionDialog(
+            operation = operation,
+            onDismiss = { selectedOperationForPartialCompletion = null },
+            onConfirm = { quantity ->
+                viewModel.markSpecificPartialCompletion(operation, quantity)
+                selectedOperationForPartialCompletion = null
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -110,15 +126,13 @@ fun MainScreen(
 
                 Button(
                     onClick = onLogout,
-                    modifier = Modifier
-                        //.align(Alignment.BottomStart)
-                        .padding(16.dp)
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text("Выйти")
                 }
             }
 
-            // Поле ввода даты и исполнителя (существующий код)
+            // Поле ввода даты и исполнителя
             OutlinedTextField(
                 value = formattedDate,
                 onValueChange = { /* Мы не обрабатываем ручной ввод */ },
@@ -129,7 +143,6 @@ fun MainScreen(
                     .padding(bottom = 16.dp),
                 trailingIcon = {
                     IconButton(onClick = {
-                        // Показываем диалог выбора даты при нажатии на иконку
                         val datePickerDialog = DatePickerDialog(
                             context,
                             { _, year, month, dayOfMonth ->
@@ -211,7 +224,10 @@ fun MainScreen(
                                 OperationItem(
                                     operation = operation,
                                     isSelected = isSelected,
-                                    onToggleSelection = { viewModel.toggleOperationSelection(it) }
+                                    onToggleSelection = { viewModel.toggleOperationSelection(it) },
+                                    onPartialCompletion = {
+                                        selectedOperationForPartialCompletion = it
+                                    }
                                 )
                                 Divider()
                             }
@@ -240,6 +256,7 @@ fun MainScreen(
         }
     }
 }
+
 @Composable
 fun GroupActionPanel(
     selectedCount: Int,
@@ -340,9 +357,10 @@ fun GroupActionPanel(
 fun OperationItem(
     operation: SdelniyNaryadOperation,
     isSelected: Boolean,
-    onToggleSelection: (String) -> Unit
+    onToggleSelection: (String) -> Unit,
+    onPartialCompletion: (SdelniyNaryadOperation) -> Unit
 ) {
-    // Определяем цвет карточки на основе соотношения плана и факта и выделения
+    // Определяем цвет карточки на основе состояния
     val cardColor = when {
         isSelected -> MaterialTheme.colorScheme.surfaceVariant // Цвет для выделенной карточки
         operation.kolichestvoFakt == 0.0 -> MaterialTheme.colorScheme.errorContainer // Красный для факта = 0
@@ -363,13 +381,26 @@ fun OperationItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Чекбокс для выбора
+            // Чекбокс и кнопка "Частично" для выбранных операций
             if (isSelected) {
-                Checkbox(
-                    checked = true,
-                    onCheckedChange = { onToggleSelection(operation.ssylka) },
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(start = 8.dp)
-                )
+                ) {
+                    Checkbox(
+                        checked = true,
+                        onCheckedChange = { onToggleSelection(operation.ssylka) },
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+
+                    Button(
+                        onClick = { onPartialCompletion(operation) },
+                        modifier = Modifier.height(40.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Text("Частично", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
 
             // Содержимое карточки
@@ -488,4 +519,58 @@ fun OperationItem(
             }
         }
     }
+}
+
+@Composable
+fun PartialCompletionDialog(
+    operation: SdelniyNaryadOperation,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var quantity by remember { mutableStateOf(operation.kolichestvoFakt.toString()) }
+    val maxQuantity = operation.kolichestvoPlan
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Частичное выполнение") },
+        text = {
+            Column {
+                Text("Введите фактическое количество (от 0.001 до ${maxQuantity})")
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = {
+                        // Разрешаем только цифры и точку
+                        quantity = it.replace(',', '.').filter { char ->
+                            char.isDigit() || char == '.'
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    ),
+                    label = { Text("Количество") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val quantityValue = quantity.toDoubleOrNull() ?: 0.001
+                    val validQuantity = quantityValue.coerceIn(0.001, maxQuantity)
+                    onConfirm(validQuantity)
+                },
+                enabled = quantity.isNotEmpty() &&
+                        quantity.toDoubleOrNull()?.let {
+                            it in 0.001..maxQuantity
+                        } ?: false
+            ) {
+                Text("Подтвердить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }

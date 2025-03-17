@@ -281,6 +281,43 @@ class OneCViewModel : ViewModel() {
             }
         }
     }
+
+    fun markSpecificPartialCompletion(operation: SdelniyNaryadOperation, actualQuantity: Double) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                val result = repository.setActualQuantity(
+                    operation.naryadNumber,
+                    operation.naryadDate,
+                    operation.operationCode,
+                    operation.lineNumber,
+                    actualQuantity
+                )
+
+                result.fold(
+                    onSuccess = {
+                        val updatedOperations = _operations.value.map {
+                            if (it.ssylka == operation.ssylka) {
+                                it.copy(kolichestvoFakt = actualQuantity)
+                            } else {
+                                it
+                            }
+                        }
+                        _operations.value = updatedOperations
+                    },
+                    onFailure = { error ->
+                        _error.value = error.message ?: "Не удалось обновить данные"
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Ошибка при обновлении данных: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
     // Вспомогательные функции для управления состоянием
     fun setLoading(loading: Boolean) {
         _isLoading.value = loading
