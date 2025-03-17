@@ -241,7 +241,46 @@ class OneCViewModel : ViewModel() {
             }
         }
     }
+    fun startExecution() {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                val selectedIds = _selectedOperations.value
+                val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
 
+                val results = operationsToUpdate.map { operation ->
+                    val actualQuantity = 0.001 // Минимальное значение для начала выполнения
+                    repository.setActualQuantity(
+                        operation.naryadNumber,
+                        operation.naryadDate,
+                        operation.operationCode,
+                        operation.lineNumber,
+                        actualQuantity
+                    )
+                }
+
+                val allSuccessful = results.all { it.isSuccess }
+
+                if (allSuccessful) {
+                    val updatedOperations = _operations.value.map { operation ->
+                        if (selectedIds.contains(operation.ssylka)) {
+                            operation.copy(kolichestvoFakt = 0.001)
+                        } else {
+                            operation
+                        }
+                    }
+                    _operations.value = updatedOperations
+                } else {
+                    _error.value = "Не удалось начать выполнение некоторых операций"
+                }
+            } catch (e: Exception) {
+                _error.value = "Ошибка при начале выполнения: ${e.message}"
+            } finally {
+                _isLoading.value = false
+                clearSelection()
+            }
+        }
+    }
     // Вспомогательные функции для управления состоянием
     fun setLoading(loading: Boolean) {
         _isLoading.value = loading

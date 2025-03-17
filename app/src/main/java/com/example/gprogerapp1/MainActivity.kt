@@ -189,7 +189,8 @@ fun MainScreen(
                                 onMarkCompleted = { viewModel.markAsCompleted() },
                                 onMarkPartiallyCompleted = { viewModel.markAsPartiallyCompleted() },
                                 onCancelSelection = { viewModel.clearSelection() },
-                                onCancelCompletion = { viewModel.cancelCompletion() }
+                                onCancelCompletion = { viewModel.cancelCompletion() },
+                                onStartExecution = { viewModel.startExecution() }
                             )
                         }
 
@@ -246,7 +247,8 @@ fun GroupActionPanel(
     onMarkCompleted: () -> Unit,
     onMarkPartiallyCompleted: () -> Unit,
     onCancelSelection: () -> Unit,
-    onCancelCompletion: () -> Unit
+    onCancelCompletion: () -> Unit,
+    onStartExecution: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -283,6 +285,14 @@ fun GroupActionPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Button(
+                    onClick = onStartExecution, // Новая кнопка
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text("Начать выполнение")
+                }
+
                 Button(
                     onClick = onMarkCompleted,
                     modifier = Modifier.weight(1f),
