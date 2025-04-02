@@ -27,10 +27,10 @@ class AuthManager(private val context: Context) {
 <soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/" 
     xmlns:ns0="http://wsproduction.ru">
     <soap-env:Body>
-        <ns0:GetData>
+        <ns0:GetOperationsQueue>
             <ns0:Date>$currentDate</ns0:Date>
             <ns0:performer>$username</ns0:performer>
-        </ns0:GetData>
+        </ns0:GetOperationsQueue>
     </soap-env:Body>
 </soap-env:Envelope>"""
 

@@ -12,5 +12,6 @@ data class SdelniyNaryadOperation(
     val naryadNumber: String = "ТПНФ-000520",
     val naryadDate: String = "17.02.2025",
     val lineNumber: String = "1",
-    val operationCode: String = "НФ-00003142"
+    val operationCode: String = "НФ-00003142",
+    val isAvailableForExecution: Boolean = false // Флаг доступности операции
 )

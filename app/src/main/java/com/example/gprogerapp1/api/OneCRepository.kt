@@ -45,6 +45,7 @@ class OneCRepository {
 
     private fun parseXmlResponse(xmlResponse: String): List<SdelniyNaryadOperation> {
         val operations = mutableListOf<SdelniyNaryadOperation>()
+        val operationsByOrder = mutableMapOf<String, MutableList<SdelniyNaryadOperation>>()
 
         try {
             // Паттерн для поиска блоков <m:Операции>
@@ -67,14 +68,51 @@ class OneCRepository {
                     naryadNumber = extractValue(operationXml, "m:Номер") ?: "",
                     naryadDate = extractValue(operationXml, "m:Дата") ?: "",
                     lineNumber = extractValue(operationXml, "m:НомерСтроки") ?: "",
-                    operationCode = extractValue(operationXml, "m:ОперацияКод") ?: ""
+                    operationCode = extractValue(operationXml, "m:ОперацияКод") ?: "",
+                    isAvailableForExecution = false
                 )
 
-                operations.add(operation)
-                Log.d("OneCRepository", "Добавлена операция: ${operation.operaciya}, наряд: ${operation.naryadNumber}")
+                // Группируем операции по заказу
+                val orderKey = operation.zakazPokupatelya
+                operationsByOrder.getOrPut(orderKey) { mutableListOf() }.add(operation)
             }
 
+            // Обработка последовательности операций
+            val availableOperations = mutableSetOf<SdelniyNaryadOperation>()
+            val unavailableOperations = mutableSetOf<SdelniyNaryadOperation>()
+
+            operationsByOrder.forEach { (_, orderOperations) ->
+                // Сортируем операции по номеру строки
+                val sortedOperations = orderOperations.sortedBy {
+                    it.lineNumber.replace(".", "").toIntOrNull() ?: Int.MAX_VALUE
+                }
+
+                sortedOperations.forEachIndexed { index, operation ->
+                    // Первая операция в заказе всегда доступна
+                    val isAvailable = index == 0 ||
+                            // Предыдущие операции выполнены
+                            sortedOperations.take(index)
+                                .all { it.kolichestvoFakt > 0 }
+
+                    if (isAvailable) {
+                        availableOperations.add(operation)
+                    } else {
+                        unavailableOperations.add(operation)
+                    }
+                }
+            }
+
+            // Помечаем доступные операции
+            val processedOperations = (availableOperations + unavailableOperations).map { operation ->
+                operation.copy(
+                    isAvailableForExecution = availableOperations.contains(operation)
+                )
+            }
+
+            operations.addAll(processedOperations)
+
             Log.d("OneCRepository", "Распарсено операций: ${operations.size}")
+            Log.d("OneCRepository", "Доступные операции: ${availableOperations.size}")
         } catch (e: Exception) {
             Log.e("OneCRepository", "Ошибка парсинга XML", e)
         }

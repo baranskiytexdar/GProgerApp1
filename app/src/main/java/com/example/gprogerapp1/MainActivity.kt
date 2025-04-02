@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.graphicsLayer
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -200,7 +201,15 @@ fun MainScreen(
                                 selectedCount = selectedOperations.size,
                                 isLoading = isLoading,
                                 onMarkCompleted = { viewModel.markAsCompleted() },
-                                onMarkPartiallyCompleted = { viewModel.markAsPartiallyCompleted() },
+                                onShowPartialCompletionDialog = {
+                                    // Логика вызова диалога для первой выбранной операции
+                                    val selectedOperations = viewModel.operations.value
+                                        .filter { viewModel.selectedOperations.value.contains(it.ssylka) }
+
+                                    if (selectedOperations.isNotEmpty()) {
+                                        selectedOperationForPartialCompletion = selectedOperations.first()
+                                    }
+                                },
                                 onCancelSelection = { viewModel.clearSelection() },
                                 onCancelCompletion = { viewModel.cancelCompletion() },
                                 onStartExecution = { viewModel.startExecution() }
@@ -262,7 +271,7 @@ fun GroupActionPanel(
     selectedCount: Int,
     isLoading: Boolean,
     onMarkCompleted: () -> Unit,
-    onMarkPartiallyCompleted: () -> Unit,
+    onShowPartialCompletionDialog: () -> Unit, // Новый параметр
     onCancelSelection: () -> Unit,
     onCancelCompletion: () -> Unit,
     onStartExecution: () -> Unit
@@ -303,7 +312,7 @@ fun GroupActionPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = onStartExecution, // Новая кнопка
+                    onClick = onStartExecution,
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading
                 ) {
@@ -319,7 +328,7 @@ fun GroupActionPanel(
                 }
 
                 Button(
-                    onClick = onMarkPartiallyCompleted,
+                    onClick = onShowPartialCompletionDialog,
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading
                 ) {
@@ -363,6 +372,7 @@ fun OperationItem(
     // Определяем цвет карточки на основе состояния
     val cardColor = when {
         isSelected -> MaterialTheme.colorScheme.surfaceVariant // Цвет для выделенной карточки
+        !operation.isAvailableForExecution -> MaterialTheme.colorScheme.errorContainer // Красный для недоступных операций
         operation.kolichestvoFakt == 0.0 -> MaterialTheme.colorScheme.errorContainer // Красный для факта = 0
         operation.kolichestvoFakt == operation.kolichestvoPlan -> MaterialTheme.colorScheme.primaryContainer // Зеленый для факта = плану
         else -> Color(0xFFFFF9C4) // Желтый для факта != плану и факта != 0
@@ -372,7 +382,10 @@ fun OperationItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onToggleSelection(operation.ssylka) },
+            .graphicsLayer(alpha = if (operation.isAvailableForExecution) 1f else 0.5f)
+            .clickable(operation.isAvailableForExecution) {
+                onToggleSelection(operation.ssylka)
+            },
         colors = CardDefaults.cardColors(
             containerColor = cardColor
         )
@@ -396,6 +409,7 @@ fun OperationItem(
                     Button(
                         onClick = { onPartialCompletion(operation) },
                         modifier = Modifier.height(40.dp),
+                        enabled = operation.isAvailableForExecution,
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
                         Text("Частично", style = MaterialTheme.typography.bodySmall)
@@ -417,7 +431,10 @@ fun OperationItem(
                     Text(
                         text = operation.operaciya,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = if (operation.isAvailableForExecution)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -458,6 +475,16 @@ fun OperationItem(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                }
+
+                // Предупреждение о недоступности операции
+                if (!operation.isAvailableForExecution) {
+                    Text(
+                        text = "Операция недоступна. Выполните предыдущие операции заказа.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 // Код операции и заказ покупателя

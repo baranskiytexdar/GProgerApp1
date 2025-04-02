@@ -33,12 +33,30 @@ class OneCViewModel : ViewModel() {
 
     // Функции для управления выбором
     fun toggleOperationSelection(ssylka: String) {
+        val operation = _operations.value.find { it.ssylka == ssylka }
+
+        if (operation == null) return
+
         val currentSelected = _selectedOperations.value.toMutableSet()
-        if (currentSelected.contains(ssylka)) {
-            currentSelected.remove(ssylka)
-        } else {
-            currentSelected.add(ssylka)
+        val selectedOps = _operations.value.filter { currentSelected.contains(it.ssylka) }
+
+        // Безопасное преобразование номера строки в число
+        val currentLineNumber = operation.lineNumber.toIntOrNull() ?: Int.MAX_VALUE
+
+        val canSelect = selectedOps.isEmpty() ||
+                selectedOps.maxOfOrNull { it.lineNumber.toIntOrNull() ?: 0 }
+                    ?.let { maxLineNumber ->
+                        currentLineNumber > maxLineNumber
+                    } ?: false
+
+        if (canSelect) {
+            if (currentSelected.contains(ssylka)) {
+                currentSelected.remove(ssylka)
+            } else {
+                currentSelected.add(ssylka)
+            }
         }
+
         _selectedOperations.value = currentSelected
         _selectionMode.value = currentSelected.isNotEmpty()
     }
@@ -47,7 +65,19 @@ class OneCViewModel : ViewModel() {
         _selectionMode.value = false
     }
 
+    fun showPartialCompletionDialogForSelected() {
+        viewModelScope.launch {
+            val selectedIds = _selectedOperations.value
+            val operationsToUpdate = _operations.value.filter { selectedIds.contains(it.ssylka) }
 
+            // Здесь вы можете реализовать логику группового или индивидуального частичного выполнения
+            // Например, можно показать диалог для первой выбранной операции
+            if (operationsToUpdate.isNotEmpty()) {
+                // Логика вызова диалога для первой операции
+                // Это должно быть реализовано в UI слое
+            }
+        }
+    }
     // Обработка групповых действий с обновлением фактического количества на сервере
     fun markAsCompleted() {
         viewModelScope.launch {
