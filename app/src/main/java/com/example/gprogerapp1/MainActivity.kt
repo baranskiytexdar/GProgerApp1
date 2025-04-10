@@ -260,9 +260,45 @@ fun MainScreen(
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)
             ) {
-                Text("Получить данные")
+                Text("Получить задание")
             }
         }
+
+        if (!selectionMode) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        viewModel.fetchOperations(
+                            date = apiFormattedDate,
+                            performer = ispolnitel
+                        )
+                        showResults = true
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Получить данные")
+                }
+
+                Button(
+                    onClick = {
+                        viewModel.fetchStatus(
+                            date = apiFormattedDate,
+                            performer = ispolnitel
+                        )
+                        showResults = true
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Статус")
+                }
+            }
+        }
+
     }
 }
 

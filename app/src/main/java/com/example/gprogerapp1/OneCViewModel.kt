@@ -7,7 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 class OneCViewModel : ViewModel() {
     private val repository = OneCRepository()
 
@@ -30,7 +32,36 @@ class OneCViewModel : ViewModel() {
     // Флаг режима выбора
     private val _selectionMode = MutableStateFlow(false)
     val selectionMode: StateFlow<Boolean> = _selectionMode.asStateFlow()
+    fun fetchStatus(date: String, performer: String) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _error.value = null
 
+                val result = repository.getStatus(date, performer)
+
+                result.fold(
+                    onSuccess = { operations ->
+                        if (operations.isEmpty()) {
+                            _error.value = "Нет данных для выбранного исполнителя"
+                            _operations.value = emptyList()
+                        } else {
+                            _operations.value = operations
+                        }
+                    },
+                    onFailure = { error ->
+                        _error.value = error.message ?: "Неизвестная ошибка"
+                        _operations.value = emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                _error.value = "Ошибка: ${e.message}"
+                _operations.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
     // Функции для управления выбором
     fun toggleOperationSelection(ssylka: String) {
         val operation = _operations.value.find { it.ssylka == ssylka }

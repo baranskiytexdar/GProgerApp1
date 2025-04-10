@@ -12,7 +12,7 @@ import android.util.Base64
 import android.util.Log
 
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.5.28/unf_5/ws/"
+    private const val BASE_URL = "http://192.168.5.28/unf_5_backup/ws/"
     private var USERNAME: String = "БаранскийИ"
     private var PASSWORD: String = "Nhbrjnf9"
 
@@ -98,6 +98,11 @@ object RetrofitClient {
     fun createSoapEnvelope(date: String, performer: String): String {
         return """<?xml version='1.0' encoding='utf-8'?>
 <soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/"><soap-env:Body><ns0:GetOperationsQueue xmlns:ns0="http://wsproduction.ru"><ns0:Date>$date</ns0:Date><ns0:performer>$performer</ns0:performer></ns0:GetOperationsQueue></soap-env:Body></soap-env:Envelope>"""
+    }
+
+    fun createStatusSoapEnvelope(date: String, performer: String): String {
+        return """<?xml version='1.0' encoding='utf-8'?>
+<soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/"><soap-env:Body><ns0:GetData xmlns:ns0="http://wsproduction.ru"><ns0:Date>$date</ns0:Date><ns0:performer>$performer</ns0:performer></ns0:GetData></soap-env:Body></soap-env:Envelope>"""
     }
 
     // Создаем RequestBody из строки SOAP-запроса
