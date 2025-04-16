@@ -9,24 +9,38 @@ import okhttp3.MediaType
 import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
-//import java.util.Base64
 import java.util.concurrent.TimeUnit
 import android.util.Base64
 import android.util.Log
 import com.example.gprogerapp1.api.RetrofitClient
-
+//import com.example.gprogerapp1.api.StuffViewModelle
+import java.util.regex.Pattern
+import java.util.regex.Matcher
 /**
  * Сервис для работы с 1С УНФ через REST API.
  */
 
 class OneCService {
     companion object {
-        private const val BASE_URL = "http://192.168.5.28/unf_5/"
+        private const val BASE_URL = "http://192.168.5.28/unf_5_backup/ws/"
 //        private const val USERNAME = "БаранскийИ" // Замените на реальное имя пользователя
 //        private const val PASSWORD = "Nhbrjnf4" // Замените на реальный пароль
         private const val TIMEOUT = 30L // Таймаут в секундах
     }
+    private fun parseStuffListResponse(responseBody: String): List<String> {
+        val pattern = Pattern.compile("<d4p1:ФИОСотрудника>(.*?)</d4p1:ФИОСотрудника>", Pattern.DOTALL)
+        val matcher = pattern.matcher(responseBody)
 
+        val stuffList = mutableListOf<String>()
+        while (matcher.find()) {
+            val stuffName = matcher.group(1)?.trim()
+            if (!stuffName.isNullOrEmpty()) {
+                stuffList.add(stuffName)
+            }
+        }
+
+        return stuffList
+    }
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(TIMEOUT, TimeUnit.SECONDS)
         .readTimeout(TIMEOUT, TimeUnit.SECONDS)
@@ -175,7 +189,15 @@ class OneCService {
      */
     private fun getBasicAuthHeader(username: String, password: String): String {
         val credentials = "$username:$password"
-        val encodedCredentials = Base64.encodeToString(credentials.toByteArray(), Base64.NO_WRAP)
+        Log.d("OneCService", "Credentials (before encoding): $credentials")
+
+        // Явно указываем кодировку UTF-8 для кириллических символов
+        val encodedCredentials = Base64.encodeToString(
+            credentials.toByteArray(Charsets.UTF_8),
+            Base64.NO_WRAP
+        )
+        Log.d("OneCService", "Encoded credentials: $encodedCredentials")
+
         return "Basic $encodedCredentials"
     }
 
@@ -228,5 +250,70 @@ class OneCService {
                 operationCode = "СБ002"
             )
         )
+    }
+    fun getStuffList(date: String): List<String> {
+        val currentDate = date
+
+        val soapEnvelope = """<?xml version='1.0' encoding='utf-8'?>
+<soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap-env:Body>
+        <GetStuffList xmlns="http://wsproduction.ru">
+            <Date>$currentDate</Date>
+        </GetStuffList>
+    </soap-env:Body>
+</soap-env:Envelope>"""
+
+        Log.e("OneCService", "Full SOAP Request: $soapEnvelope")
+
+        val requestBody = RetrofitClient.createRequestBody(soapEnvelope)
+
+        try {
+            // Получаем текущие учетные данные из RetrofitClient
+            val (username, password) = RetrofitClient.getCurrentCredentials()
+
+            val request = Request.Builder()
+                .url("${BASE_URL}prod.1cws")
+                .post(requestBody)
+                .addHeader("Content-Type", "text/xml; charset=utf-8")
+                .addHeader("SOAPAction", "http://wsproduction.ru#wsProduction:GetStuffList")
+                // Добавляем авторизацию
+                .addHeader("Authorization", getBasicAuthHeader(username, password))
+                .build()
+
+            Log.e("OneCService", "Request URL: ${request.url}")
+            Log.e("OneCService", "Request Headers: ${request.headers}")
+
+            val response = client.newCall(request).execute()
+
+            Log.e("OneCService", "Response Code: ${response.code}")
+            Log.e("OneCService", "Response Message: ${response.message}")
+
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "No error body"
+                Log.e("OneCService", "Error Body: $errorBody")
+                throw IOException("Ошибка при выполнении запроса: ${response.code} ${response.message}")
+            }
+
+            val responseBody = response.body?.string() ?: throw IOException("Пустой ответ от сервера")
+
+            Log.e("OneCService", "Full Response Body: $responseBody")
+
+            // Парсинг списка сотрудников
+//            val pattern = Pattern.compile("<m:return>(.*?)</m:return>", Pattern.DOTALL)
+//            val matcher = pattern.matcher(responseBody)
+//
+//            val stuffList = mutableListOf<String>()
+//            while (matcher.find()) {
+//                val stuffName = matcher.group(1)?.trim()
+//                if (!stuffName.isNullOrEmpty()) {
+//                    stuffList.add(stuffName)
+//                }
+//            }
+            return parseStuffListResponse(responseBody)
+            //return stuffList
+        } catch (e: Exception) {
+            Log.e("OneCService", "Detailed Error:", e)
+            throw e
+        }
     }
 }

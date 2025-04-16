@@ -39,26 +39,37 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GProgerApp1Theme {
-                // Получаем экземпляр AuthViewModel для работы с авторизацией
                 val authViewModel: AuthViewModel = viewModel()
-                // Отслеживаем состояние авторизации
+                val stuffListViewModel: StuffListViewModel = viewModel()
+
                 val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
+                var selectedStaff by remember { mutableStateOf<String?>(null) }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Проверяем, авторизован ли пользователь
-                    if (isLoggedIn) {
-                        // Если авторизован, показываем основной экран с возможностью выхода
-                        MainScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            viewModel = viewModel(),
-                            onLogout = { authViewModel.logout() }
-                        )
-                    } else {
-                        // Если не авторизован, показываем экран входа
-                        LoginScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            viewModel = authViewModel
-                        )
+                    when {
+                        !isLoggedIn -> {
+                            LoginScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                viewModel = authViewModel
+                            )
+                        }
+                        selectedStaff == null -> {
+                            StaffListScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                viewModel = stuffListViewModel,
+                                onStaffSelected = { selectedStaff = it },
+                                onLogout = { authViewModel.logout() }
+                            )
+                        }
+                        else -> {
+                            MainScreen(
+                                modifier = Modifier.padding(innerPadding),
+                                viewModel = viewModel(),
+                                performer = selectedStaff!!,
+                                onLogout = { authViewModel.logout() },
+                                onBackToStaffList = { selectedStaff = null }
+                            )
+                        }
                     }
                 }
             }
@@ -70,7 +81,9 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     modifier: Modifier = Modifier,
     viewModel: OneCViewModel = viewModel(),
-    onLogout: () -> Unit
+    performer: String,
+    onLogout: () -> Unit,
+    onBackToStaffList: () -> Unit
 ) {
     // Существующие состояния
     var selectedDate by remember { mutableStateOf(LocalDate.of(2025, 2, 18)) }
@@ -103,7 +116,19 @@ fun MainScreen(
             }
         )
     }
+    Box(modifier = modifier.fillMaxSize()) {
+        // Существующий код MainScreen
 
+        // Добавим кнопку возврата к списку сотрудников
+        Button(
+            onClick = onBackToStaffList,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+        ) {
+            Text("Назад к списку")
+        }
+    }
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

@@ -30,4 +30,13 @@ interface OneCService {
     suspend fun setDataRaw(
         @Body soapRequestBody: RequestBody
     ): Response<ResponseBody>
+
+    @Headers(
+        "Content-Type: text/xml; charset=utf-8",
+        "SOAPAction: http://wsproduction.ru#wsProduction:GetStuffList"
+    )
+    @POST("prod.1cws")
+    suspend fun getStuffList(
+        @Body soapRequestBody: RequestBody
+    ): Response<ResponseBody>
 }

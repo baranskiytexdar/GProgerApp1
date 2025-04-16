@@ -14,7 +14,7 @@ import android.util.Log
 object RetrofitClient {
     private const val BASE_URL = "http://192.168.5.28/unf_5_backup/ws/"
     private var USERNAME: String = "БаранскийИ"
-    private var PASSWORD: String = "Nhbrjnf9"
+    private var PASSWORD: String = "Qwerty123"
 
     // Логгер для отладки HTTP запросов и ответов
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -145,4 +145,15 @@ object RetrofitClient {
     </soap-env:Body>
 </soap-env:Envelope>"""
     }
+    fun createStuffListSoapEnvelope(date: String): String {
+        return """<?xml version='1.0' encoding='utf-8'?>
+<soap-env:Envelope xmlns:soap-env="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap-env:Body>
+        <ns0:GetStuffList xmlns:ns0="http://wsproduction.ru">
+            <ns0:Date>$date</ns0:Date>
+        </ns0:GetStuffList>
+    </soap-env:Body>
+</soap-env:Envelope>"""
+    }
+
 }
